@@ -5,8 +5,54 @@ from typing import Dict, Any, List, Optional, Tuple, Union
 import numpy as np
 import pandas as pd
 
+def _is_empty_or_null(val: Any) -> bool:
+    """Checks if a cell value is null, NaN, None, or empty/whitespace string."""
+    if pd.isna(val) or val is None:
+        return True
+    v_str = str(val).strip()
+    return v_str in ("", "nan", "NaN", "None", "null", "NULL", "N/A", "n/a", "NA", "#N/A", "#VALUE!")
+
+def _normalize_col_str(name: str) -> str:
+    """Helper to convert column string to normalized snake_case comparison key."""
+    s = str(name).strip()
+    s1 = re.sub(r'(.)([A-Z][a-z]+)', r'\1_\2', s)
+    s2 = re.sub(r'([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+    return re.sub(r'[^a-zA-Z0-9]+', '_', s2).strip('_')
+
 class CleaningEngine:
     """Deterministic, robust data cleaning and profiling engine."""
+
+    @staticmethod
+    def _match_columns(df: pd.DataFrame, target_columns: Optional[List[str]]) -> List[str]:
+        """Tolerantly matches column names even if spaces were trimmed or headers were normalized."""
+        df_cols = list(df.columns)
+        if not target_columns:
+            return df_cols
+
+        matched = []
+        df_norm_map = {_normalize_col_str(c): c for c in df_cols}
+        df_strip_map = {c.strip().lower(): c for c in df_cols}
+
+        for t in target_columns:
+            if not t:
+                continue
+            # 1. Exact match
+            if t in df.columns:
+                matched.append(t)
+                continue
+            # 2. Strip match
+            t_strip = t.strip().lower()
+            if t_strip in df_strip_map:
+                matched.append(df_strip_map[t_strip])
+                continue
+            # 3. Normalized snake_case match
+            t_norm = _normalize_col_str(t)
+            if t_norm in df_norm_map:
+                matched.append(df_norm_map[t_norm])
+                continue
+
+        # Deduplicate while preserving order
+        return list(dict.fromkeys(matched))
 
     # -------------------------------------------------------------
     # Profiling & Quality Scoring
@@ -26,15 +72,21 @@ class CleaningEngine:
         total_cells = row_count * col_count if col_count > 0 else 0
         
         # Calculate missing values per column and total
-        missing_per_col = df.isna().sum().to_dict()
-        total_missing_cells = int(df.isna().sum().sum())
+        missing_per_col = {}
+        total_missing_cells = 0
+
+        for col in df.columns:
+            missing_count = int(df[col].apply(_is_empty_or_null).sum())
+            missing_per_col[col] = missing_count
+            total_missing_cells += missing_count
+
         missing_pct = (total_missing_cells / total_cells * 100) if total_cells > 0 else 0.0
 
         # Column profile details
         columns_profile = []
         issues: List[Dict[str, Any]] = []
 
-        # Check duplicate rows issue
+        # 1. Duplicate rows issue
         if duplicate_rows > 0 and "duplicate_rows" not in dismissed_set:
             issues.append({
                 "id": "duplicate_rows",
@@ -49,9 +101,9 @@ class CleaningEngine:
 
         for col in df.columns:
             col_series = df[col]
-            missing_count = int(col_series.isna().sum())
-            non_null_series = col_series.dropna()
-            unique_count = int(col_series.nunique(dropna=True))
+            missing_count = missing_per_col[col]
+            non_null_series = col_series[~col_series.apply(_is_empty_or_null)]
+            unique_count = int(non_null_series.nunique())
             
             # Infer column type
             inferred_type = CleaningEngine._infer_column_type(col_series)
@@ -90,7 +142,7 @@ class CleaningEngine:
                     "severity": severity,
                     "category": "missing_values",
                     "title": f"Missing values in '{col_str}': {missing_count} rows ({missing_col_pct:.1f}%)",
-                    "description": f"Column '{col_str}' has missing / null values.",
+                    "description": f"Column '{col_str}' has {missing_count} missing or empty values.",
                     "affected_columns": [col_str],
                     "suggested_action": "handle_missing",
                     "suggested_params": {"columns": [col_str], "strategy": strat, "value": "Unknown" if strat == "fill_value" else None}
@@ -120,7 +172,7 @@ class CleaningEngine:
                 currency_count = non_null_series.apply(
                     lambda v: bool(re.search(r'[\$€£¥]\s*[\d,]+(\.\d+)?', str(v)))
                 ).sum()
-                if currency_count > 0 and currency_count / len(non_null_series) > 0.5:
+                if currency_count > 0 and currency_count / len(non_null_series) > 0.4:
                     issues.append({
                         "id": curr_issue_id,
                         "severity": "medium",
@@ -170,7 +222,7 @@ class CleaningEngine:
     @staticmethod
     def _infer_column_type(series: pd.Series) -> str:
         """Heuristically infers human-friendly semantic column types."""
-        non_null = series.dropna()
+        non_null = series[~series.apply(_is_empty_or_null)]
         if len(non_null) == 0:
             return "empty"
 
@@ -181,16 +233,14 @@ class CleaningEngine:
         if set(sample_lower.unique()).issubset({"true", "false", "yes", "no", "1", "0", "t", "f", "y", "n"}):
             return "boolean"
 
-        # Check identifier with leading zero
+        # Check identifier with leading zero (e.g. '00101')
         if non_null.astype(str).str.match(r'^0\d+$').any():
             return "identifier"
 
         # Check numeric
         if pd.api.types.is_numeric_dtype(series):
-            # Check integer vs float
             if pd.api.types.is_integer_dtype(series):
                 return "integer"
-            # If all floats are whole numbers
             is_whole = non_null.apply(lambda x: float(x).is_integer() if not math.isnan(float(x)) else True).all()
             return "integer" if is_whole else "float"
 
@@ -235,7 +285,7 @@ class CleaningEngine:
     def remove_duplicates(df: pd.DataFrame, subset: Optional[List[str]] = None, keep: str = "first") -> Tuple[pd.DataFrame, Dict[str, Any]]:
         """Removes duplicate rows based on subset columns or all columns."""
         initial_count = len(df)
-        valid_subset = [c for c in subset if c in df.columns] if subset else None
+        valid_subset = CleaningEngine._match_columns(df, subset) if subset else None
         keep_val: Any = keep if keep in ("first", "last", False) else "first"
         
         cleaned_df = df.drop_duplicates(subset=valid_subset, keep=keep_val).reset_index(drop=True)
@@ -260,13 +310,16 @@ class CleaningEngine:
     ) -> Tuple[pd.DataFrame, Dict[str, Any]]:
         """Handles missing values using drop_rows, drop_columns, fill_value, fill_mean, fill_median, fill_mode, ffill, bfill."""
         cleaned_df = df.copy()
-        target_cols = [c for c in columns if c in cleaned_df.columns] if columns else list(cleaned_df.columns)
+        target_cols = CleaningEngine._match_columns(cleaned_df, columns)
         initial_rows = len(cleaned_df)
         initial_cols = len(cleaned_df.columns)
         affected_cells = 0
 
         if strategy == "drop_rows":
-            cleaned_df = cleaned_df.dropna(subset=target_cols).reset_index(drop=True)
+            mask = pd.Series(True, index=cleaned_df.index)
+            for col in target_cols:
+                mask &= ~cleaned_df[col].apply(_is_empty_or_null)
+            cleaned_df = cleaned_df[mask].reset_index(drop=True)
             rows_dropped = initial_rows - len(cleaned_df)
             desc = f"Dropped {rows_dropped} row(s) containing missing values in {len(target_cols)} column(s)."
             detail = {"strategy": strategy, "rows_dropped": rows_dropped, "columns": target_cols, "description": desc}
@@ -274,10 +327,9 @@ class CleaningEngine:
 
         elif strategy == "drop_columns":
             if threshold is not None:
-                # Drop columns where missing percentage > threshold (0.0 to 1.0)
                 cols_to_drop = [
                     col for col in target_cols
-                    if (cleaned_df[col].isna().sum() / len(cleaned_df)) >= threshold
+                    if (cleaned_df[col].apply(_is_empty_or_null).sum() / len(cleaned_df)) >= threshold
                 ]
             else:
                 cols_to_drop = target_cols
@@ -290,55 +342,77 @@ class CleaningEngine:
         elif strategy == "fill_value":
             fill_val = "Unknown" if value is None else value
             for col in target_cols:
-                missing_in_col = int(cleaned_df[col].isna().sum())
-                if missing_in_col > 0:
-                    cleaned_df[col] = cleaned_df[col].fillna(fill_val)
-                    affected_cells += missing_in_col
+                def replacer(val):
+                    nonlocal affected_cells
+                    if _is_empty_or_null(val):
+                        affected_cells += 1
+                        return fill_val
+                    return val
+                cleaned_df[col] = cleaned_df[col].apply(replacer)
             desc = f"Filled missing values in {len(target_cols)} column(s) with constant '{fill_val}' ({affected_cells} cells affected)."
             return cleaned_df, {"strategy": strategy, "fill_value": fill_val, "cells_affected": affected_cells, "description": desc}
 
-        elif strategy == "fill_mean":
-            for col in target_cols:
-                # Try numeric conversion
-                numeric_series = pd.to_numeric(cleaned_df[col], errors='coerce')
-                if not numeric_series.dropna().empty:
-                    mean_val = round(float(numeric_series.mean()), 2)
-                    missing_in_col = int(cleaned_df[col].isna().sum())
-                    cleaned_df[col] = cleaned_df[col].fillna(mean_val)
-                    affected_cells += missing_in_col
-            desc = f"Filled missing numeric values in {len(target_cols)} column(s) with mean ({affected_cells} cells affected)."
-            return cleaned_df, {"strategy": strategy, "cells_affected": affected_cells, "description": desc}
-
         elif strategy == "fill_median":
             for col in target_cols:
-                numeric_series = pd.to_numeric(cleaned_df[col], errors='coerce')
-                if not numeric_series.dropna().empty:
-                    median_val = round(float(numeric_series.median()), 2)
-                    missing_in_col = int(cleaned_df[col].isna().sum())
-                    cleaned_df[col] = cleaned_df[col].fillna(median_val)
-                    affected_cells += missing_in_col
+                # Strip $ and commas to calculate numeric median
+                clean_num_series = cleaned_df[col].apply(
+                    lambda v: pd.to_numeric(re.sub(r'[\$€£¥\s,%]', '', str(v)), errors='coerce') if not _is_empty_or_null(v) else np.nan
+                )
+                valid_nums = clean_num_series.dropna()
+                if not valid_nums.empty:
+                    median_val = round(float(valid_nums.median()), 2)
+                    def replacer(val):
+                        nonlocal affected_cells
+                        if _is_empty_or_null(val):
+                            affected_cells += 1
+                            return median_val
+                        return val
+                    cleaned_df[col] = cleaned_df[col].apply(replacer)
             desc = f"Filled missing numeric values in {len(target_cols)} column(s) with median ({affected_cells} cells affected)."
+            return cleaned_df, {"strategy": strategy, "cells_affected": affected_cells, "description": desc}
+
+        elif strategy == "fill_mean":
+            for col in target_cols:
+                clean_num_series = cleaned_df[col].apply(
+                    lambda v: pd.to_numeric(re.sub(r'[\$€£¥\s,%]', '', str(v)), errors='coerce') if not _is_empty_or_null(v) else np.nan
+                )
+                valid_nums = clean_num_series.dropna()
+                if not valid_nums.empty:
+                    mean_val = round(float(valid_nums.mean()), 2)
+                    def replacer(val):
+                        nonlocal affected_cells
+                        if _is_empty_or_null(val):
+                            affected_cells += 1
+                            return mean_val
+                        return val
+                    cleaned_df[col] = cleaned_df[col].apply(replacer)
+            desc = f"Filled missing numeric values in {len(target_cols)} column(s) with mean ({affected_cells} cells affected)."
             return cleaned_df, {"strategy": strategy, "cells_affected": affected_cells, "description": desc}
 
         elif strategy == "fill_mode":
             for col in target_cols:
-                mode_vals = cleaned_df[col].mode()
-                if not mode_vals.empty:
-                    mode_val = mode_vals.iloc[0]
-                    missing_in_col = int(cleaned_df[col].isna().sum())
-                    cleaned_df[col] = cleaned_df[col].fillna(mode_val)
-                    affected_cells += missing_in_col
+                valid_series = cleaned_df[col][~cleaned_df[col].apply(_is_empty_or_null)]
+                if not valid_series.empty:
+                    mode_val = valid_series.mode().iloc[0]
+                    def replacer(val):
+                        nonlocal affected_cells
+                        if _is_empty_or_null(val):
+                            affected_cells += 1
+                            return mode_val
+                        return val
+                    cleaned_df[col] = cleaned_df[col].apply(replacer)
             desc = f"Filled missing values in {len(target_cols)} column(s) with mode ({affected_cells} cells affected)."
             return cleaned_df, {"strategy": strategy, "cells_affected": affected_cells, "description": desc}
 
         elif strategy in ("ffill", "bfill"):
             for col in target_cols:
-                missing_in_col = int(cleaned_df[col].isna().sum())
+                series_nan = cleaned_df[col].apply(lambda v: np.nan if _is_empty_or_null(v) else v)
+                missing_count = int(series_nan.isna().sum())
                 if strategy == "ffill":
-                    cleaned_df[col] = cleaned_df[col].ffill().bfill()
+                    cleaned_df[col] = series_nan.ffill().bfill()
                 else:
-                    cleaned_df[col] = cleaned_df[col].bfill().ffill()
-                affected_cells += missing_in_col
+                    cleaned_df[col] = series_nan.bfill().ffill()
+                affected_cells += missing_count
             desc = f"Filled missing values in {len(target_cols)} column(s) using {strategy} ({affected_cells} cells affected)."
             return cleaned_df, {"strategy": strategy, "cells_affected": affected_cells, "description": desc}
 
@@ -356,10 +430,7 @@ class CleaningEngine:
             col_str = str(col).strip()
             
             if style == "snake_case":
-                # Replace non-alphanumeric chars with underscore, then snake case
-                s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', col_str)
-                s2 = re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
-                clean = re.sub(r'[^a-zA-Z0-9]+', '_', s2).strip('_')
+                clean = _normalize_col_str(col_str)
             elif style == "camelCase":
                 words = re.findall(r'[a-zA-Z0-9]+', col_str)
                 if not words:
@@ -372,6 +443,9 @@ class CleaningEngine:
                 clean = re.sub(r'\s+', ' ', col_str).upper()
             else: # trim_clean
                 clean = re.sub(r'\s+', ' ', col_str)
+
+            if not clean:
+                clean = "column"
 
             # Deduplicate column names if collisions happen
             if clean in seen:
@@ -398,24 +472,23 @@ class CleaningEngine:
     def trim_whitespace(df: pd.DataFrame, columns: Optional[List[str]] = None, collapse_internal: bool = True) -> Tuple[pd.DataFrame, Dict[str, Any]]:
         """Trims leading/trailing whitespace and optionally collapses internal multiple spaces."""
         cleaned_df = df.copy()
-        target_cols = [c for c in columns if c in cleaned_df.columns] if columns else list(cleaned_df.columns)
+        target_cols = CleaningEngine._match_columns(cleaned_df, columns)
         affected_cells = 0
 
         for col in target_cols:
-            if cleaned_df[col].dtype == object or pd.api.types.is_string_dtype(cleaned_df[col]):
-                def clean_str(val):
-                    nonlocal affected_cells
-                    if isinstance(val, str):
-                        original = val
-                        stripped = val.strip()
-                        if collapse_internal:
-                            stripped = re.sub(r'\s{2,}', ' ', stripped)
-                        if stripped != original:
-                            affected_cells += 1
-                        return stripped
-                    return val
+            def clean_str(val):
+                nonlocal affected_cells
+                if isinstance(val, str) and not _is_empty_or_null(val):
+                    original = val
+                    stripped = val.strip()
+                    if collapse_internal:
+                        stripped = re.sub(r'\s{2,}', ' ', stripped)
+                    if stripped != original:
+                        affected_cells += 1
+                    return stripped
+                return val
 
-                cleaned_df[col] = cleaned_df[col].apply(clean_str)
+            cleaned_df[col] = cleaned_df[col].apply(clean_str)
 
         detail = {
             "operation": "trim_whitespace",
@@ -429,31 +502,30 @@ class CleaningEngine:
     def text_case(df: pd.DataFrame, columns: List[str], case_type: str = "title") -> Tuple[pd.DataFrame, Dict[str, Any]]:
         """Converts string casing: title, lower, upper, capitalize."""
         cleaned_df = df.copy()
-        target_cols = [c for c in columns if c in cleaned_df.columns]
+        target_cols = CleaningEngine._match_columns(cleaned_df, columns)
         affected_cells = 0
 
         for col in target_cols:
-            if cleaned_df[col].dtype == object or pd.api.types.is_string_dtype(cleaned_df[col]):
-                def change_case(val):
-                    nonlocal affected_cells
-                    if isinstance(val, str):
-                        original = val
-                        if case_type == "title":
-                            new_val = val.title()
-                        elif case_type == "lower":
-                            new_val = val.lower()
-                        elif case_type == "upper":
-                            new_val = val.upper()
-                        elif case_type == "capitalize":
-                            new_val = val.capitalize()
-                        else:
-                            new_val = val
-                        if new_val != original:
-                            affected_cells += 1
-                        return new_val
-                    return val
+            def change_case(val):
+                nonlocal affected_cells
+                if isinstance(val, str) and not _is_empty_or_null(val):
+                    original = val
+                    if case_type == "title":
+                        new_val = val.title()
+                    elif case_type == "lower":
+                        new_val = val.lower()
+                    elif case_type == "upper":
+                        new_val = val.upper()
+                    elif case_type == "capitalize":
+                        new_val = val.capitalize()
+                    else:
+                        new_val = val
+                    if new_val != original:
+                        affected_cells += 1
+                    return new_val
+                return val
 
-                cleaned_df[col] = cleaned_df[col].apply(change_case)
+            cleaned_df[col] = cleaned_df[col].apply(change_case)
 
         detail = {
             "operation": "text_case",
@@ -474,7 +546,7 @@ class CleaningEngine:
     ) -> Tuple[pd.DataFrame, Dict[str, Any]]:
         """Converts column data types: datetime, currency_numeric, integer, float, string, boolean, identifier."""
         cleaned_df = df.copy()
-        target_cols = [c for c in columns if c in cleaned_df.columns]
+        target_cols = CleaningEngine._match_columns(cleaned_df, columns)
         affected_cells = 0
 
         for col in target_cols:
@@ -483,11 +555,10 @@ class CleaningEngine:
             if target_type == "datetime":
                 def parse_date(val):
                     nonlocal affected_cells
-                    if pd.isna(val) or val == "" or str(val).strip() == "":
+                    if _is_empty_or_null(val):
                         return None
                     val_str = str(val).strip()
                     try:
-                        # Try standard pandas to_datetime with flexible dayfirst/yearfirst
                         dt = pd.to_datetime(val_str, errors='coerce', format='mixed')
                         if pd.notna(dt):
                             affected_cells += 1
@@ -501,16 +572,12 @@ class CleaningEngine:
             elif target_type in ("currency_numeric", "numeric", "float"):
                 def parse_numeric(val):
                     nonlocal affected_cells
-                    if pd.isna(val) or val == "" or str(val).strip() == "":
+                    if _is_empty_or_null(val):
                         return np.nan
                     val_str = str(val).strip()
-                    # Strip $, €, £, ¥, commas, %, spaces
                     cleaned_str = re.sub(r'[\$€£¥\s,%]', '', val_str)
                     try:
                         f_val = float(cleaned_str)
-                        # Check if original had % symbol, adjust if so
-                        if "%" in val_str:
-                            f_val = f_val # keep percentage scale or user choice
                         affected_cells += 1
                         return f_val
                     except Exception:
@@ -521,7 +588,7 @@ class CleaningEngine:
             elif target_type == "integer":
                 def parse_int(val):
                     nonlocal affected_cells
-                    if pd.isna(val) or val == "" or str(val).strip() == "":
+                    if _is_empty_or_null(val):
                         return np.nan
                     val_str = str(val).strip()
                     cleaned_str = re.sub(r'[\$€£¥\s,%]', '', val_str)
@@ -535,10 +602,9 @@ class CleaningEngine:
                 cleaned_df[col] = series.apply(parse_int)
 
             elif target_type == "identifier":
-                # String that keeps leading zeros untouched!
                 def parse_identifier(val):
                     nonlocal affected_cells
-                    if pd.isna(val):
+                    if _is_empty_or_null(val):
                         return ""
                     val_str = str(val).strip()
                     affected_cells += 1
@@ -551,7 +617,7 @@ class CleaningEngine:
                 false_set = {"false", "no", "0", "f", "n"}
                 def parse_bool(val):
                     nonlocal affected_cells
-                    if pd.isna(val):
+                    if _is_empty_or_null(val):
                         return None
                     v_str = str(val).strip().lower()
                     if v_str in true_set:
@@ -588,19 +654,23 @@ class CleaningEngine:
         cleaned_df = df.copy()
 
         if action == "rename" and rename_map:
-            valid_map = {k: v for k, v in rename_map.items() if k in cleaned_df.columns and v.strip()}
+            valid_map = {}
+            for k, v in rename_map.items():
+                matched_k = CleaningEngine._match_columns(cleaned_df, [k])
+                if matched_k and v.strip():
+                    valid_map[matched_k[0]] = v.strip()
             cleaned_df = cleaned_df.rename(columns=valid_map)
             desc = f"Renamed {len(valid_map)} column(s): {valid_map}"
             return cleaned_df, {"action": action, "mapping": valid_map, "description": desc}
 
         elif action == "drop" and columns:
-            valid_cols = [c for c in columns if c in cleaned_df.columns]
+            valid_cols = CleaningEngine._match_columns(cleaned_df, columns)
             cleaned_df = cleaned_df.drop(columns=valid_cols)
             desc = f"Dropped {len(valid_cols)} column(s): {valid_cols}"
             return cleaned_df, {"action": action, "dropped_columns": valid_cols, "description": desc}
 
         elif action == "select" and columns:
-            valid_cols = [c for c in columns if c in cleaned_df.columns]
+            valid_cols = CleaningEngine._match_columns(cleaned_df, columns)
             cleaned_df = cleaned_df[valid_cols]
             desc = f"Selected {len(valid_cols)} column(s), omitted remaining."
             return cleaned_df, {"action": action, "selected_columns": valid_cols, "description": desc}
@@ -625,25 +695,24 @@ class CleaningEngine:
     ) -> Tuple[pd.DataFrame, Dict[str, Any]]:
         """Finds and replaces text patterns in specified or all columns."""
         cleaned_df = df.copy()
-        target_cols = [c for c in columns if c in cleaned_df.columns] if columns else list(cleaned_df.columns)
+        target_cols = CleaningEngine._match_columns(cleaned_df, columns)
         affected_cells = 0
 
         for col in target_cols:
-            if cleaned_df[col].dtype == object or pd.api.types.is_string_dtype(cleaned_df[col]):
-                def replacer(val):
-                    nonlocal affected_cells
-                    if isinstance(val, str):
-                        original = val
-                        if is_regex:
-                            new_val = re.sub(search_pattern, replace_value, val)
-                        else:
-                            new_val = val.replace(search_pattern, replace_value)
-                        if new_val != original:
-                            affected_cells += 1
-                        return new_val
-                    return val
+            def replacer(val):
+                nonlocal affected_cells
+                if isinstance(val, str) and not _is_empty_or_null(val):
+                    original = val
+                    if is_regex:
+                        new_val = re.sub(search_pattern, replace_value, val)
+                    else:
+                        new_val = val.replace(search_pattern, replace_value)
+                    if new_val != original:
+                        affected_cells += 1
+                    return new_val
+                return val
 
-                cleaned_df[col] = cleaned_df[col].apply(replacer)
+            cleaned_df[col] = cleaned_df[col].apply(replacer)
 
         desc = f"Replaced '{search_pattern}' with '{replace_value}' in {len(target_cols)} column(s) ({affected_cells} cells affected)."
         return cleaned_df, {
@@ -667,7 +736,6 @@ class CleaningEngine:
         raw_profile = CleaningEngine.profile_dataframe(raw_df)
         clean_profile = CleaningEngine.profile_dataframe(clean_df)
 
-        # Estimate changed cells on common overlapping rows/columns
         common_cols = [c for c in clean_df.columns if c in raw_df.columns]
         min_rows = min(raw_rows, clean_rows)
         changed_cells_count = 0
