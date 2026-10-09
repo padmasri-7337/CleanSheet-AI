@@ -132,24 +132,6 @@ class CleaningEngine:
                         "suggested_params": {"columns": [col_str], "target_type": "currency_numeric"}
                     })
 
-            # Detect leading zeros in potential identifiers
-            id_issue_id = f"leading_zeros_{col_str}"
-            if col_str not in protected_set and id_issue_id not in dismissed_set and inferred_type in ("string", "identifier") and len(non_null_series) > 0:
-                has_leading_zeros = non_null_series.apply(
-                    lambda v: bool(re.match(r'^0\d+$', str(v).strip()))
-                ).any()
-                if has_leading_zeros:
-                    issues.append({
-                        "id": id_issue_id,
-                        "severity": "info",
-                        "category": "identifiers",
-                        "title": f"Leading zeros detected in '{col_str}'",
-                        "description": f"Column '{col_str}' appears to be an identifier (e.g. zip code, ID). Protect as text to avoid truncation.",
-                        "affected_columns": [col_str],
-                        "suggested_action": "convert_types",
-                        "suggested_params": {"columns": [col_str], "target_type": "identifier"}
-                    })
-
             # Sample values (up to 3 non-null masked/anonymized strings)
             sample_vals = [str(val) for val in non_null_series.head(3).tolist()]
 
