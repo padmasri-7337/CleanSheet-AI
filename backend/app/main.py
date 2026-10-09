@@ -56,11 +56,28 @@ app.include_router(recipes.router)
 app.include_router(history.router)
 app.include_router(auth.router)
 
-@app.get("/")
-def read_root():
-    return {
-        "app": "CleanSheet AI API",
-        "status": "operational",
-        "docs_url": "/docs",
-        "database": db_manager.get_status()["mode"]
-    }
+from pathlib import Path
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+FRONTEND_DIST_DIR = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
+
+if FRONTEND_DIST_DIR.exists():
+    if (FRONTEND_DIST_DIR / "assets").exists():
+        app.mount("/assets", StaticFiles(directory=FRONTEND_DIST_DIR / "assets"), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        file_path = FRONTEND_DIST_DIR / full_path
+        if full_path and file_path.is_file():
+            return FileResponse(file_path)
+        return FileResponse(FRONTEND_DIST_DIR / "index.html")
+else:
+    @app.get("/")
+    def read_root():
+        return {
+            "app": "CleanSheet AI API",
+            "status": "operational",
+            "docs_url": "/docs",
+            "database": db_manager.get_status()["mode"]
+        }
