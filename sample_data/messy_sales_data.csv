@@ -1,0 +1,15 @@
+  Order ID  , Customer_Code ,Customer Name, purchase_date , Product_Category ,  Units Sold , Unit_Price ,Total Amount,Discount %,Status,Notes
+ORD-001,00101,  Johnathan Doe  ,2023-01-15,Electronics, 3 ,"$1,200.50",$3601.50,10%,Completed,Standard shipping
+ORD-002,00245,Sarah O'Connor,15/01/2023,Home & Kitchen, 1 ,$45.00,$45.00,0%,completed,Gift wrapped
+ORD-003,00312,  MICHAEL CHANG  ,"Jan 16, 2023",Electronics, 2 ,$850.00,$1700.00,5%,COMPLETED,Rush order
+ORD-004,00409,Emma Watson,,Books, 5 ,$18.99,,15%,PENDING,Backorder
+ORD-005,00520,robert brown,2023/01/18,Electronics, ,$299.99,$0.00,0%,Completed,Warranty included
+ORD-002,00245,Sarah O'Connor,15/01/2023,Home & Kitchen, 1 ,$45.00,$45.00,0%,completed,Gift wrapped
+ORD-006,00631,  Alice Wonderland ,2023-01-20,Clothing, 4 ,$35.50,$142.00,20%,Shipped,Expedited
+ORD-007,00714,David Miller,2023-01-22,Home & Kitchen, 2 ,$120.00,$240.00,,Delivered,Customer satisfied
+ORD-008,00889,  lisa simpson  ,23-01-2023,, 1 ,$99.00,$99.00,0%,Shipped,
+ORD-009,00902,Carlos Ramirez,2023-01-25,Electronics, 3 ,$450.00,$1350.00,10%,Delivered,Invoiced
+ORD-009,00902,Carlos Ramirez,2023-01-25,Electronics, 3 ,$450.00,$1350.00,10%,Delivered,Invoiced
+ORD-010,00045,  Emily Clark ,2023/01/28,Books, 10 ,$12.50,$125.00,0%,Completed,Bulk educational discount
+ORD-011,00188,,2023-01-30,Clothing, 2 ,$60.00,$120.00,5%,Processing,Missing name
+ORD-012,00299,George Wilson,"Feb 2, 2023",Electronics, 1 ,"$1,499.00",$1499.00,0%,completed,VIP customer
