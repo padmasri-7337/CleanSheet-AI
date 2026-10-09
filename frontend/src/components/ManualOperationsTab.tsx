@@ -276,7 +276,7 @@ export const ManualOperationsTab: React.FC<ManualOperationsTabProps> = ({
               >
                 <option value="datetime">Date: ISO YYYY-MM-DD</option>
                 <option value="currency_numeric">Currency: Strip symbols to Float</option>
-                <option value="identifier">Identifier: Protect Leading Zeros</option>
+                <option value="identifier">Text: Preserve ID Codes & Leading Zeros</option>
                 <option value="integer">Integer: Round to Whole Number</option>
                 <option value="boolean">Boolean: True/False</option>
               </select>
