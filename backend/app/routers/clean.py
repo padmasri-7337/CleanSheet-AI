@@ -85,6 +85,16 @@ def apply_single_step(req: SingleOperationRequest):
     new_df, detail = _execute_operation(session.current_df, req.operation, req.params)
     
     session.current_df = new_df
+
+    # If user explicitly converted columns to identifier, protect them
+    if req.operation == "convert_types" and req.params.get("target_type") == "identifier":
+        for col in req.params.get("columns", []):
+            if col not in session.protected_columns:
+                session.protected_columns.append(col)
+            iss_id = f"leading_zeros_{col}"
+            if iss_id not in session.dismissed_issues:
+                session.dismissed_issues.append(iss_id)
+
     log_entry = {
         "step_number": len(session.applied_operations) + 1,
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -94,6 +104,23 @@ def apply_single_step(req: SingleOperationRequest):
     }
     session.applied_operations.append(log_entry)
     session.audit_log.append(log_entry)
+
+    return _build_preview_response(session)
+
+@router.post("/dismiss_issue", response_model=DatasetPreviewResponse)
+def dismiss_issue(req: SingleOperationRequest):
+    """Dismisses an informational notice or acknowledges an issue."""
+    session = session_storage.get_session(req.session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Cleaning session not found or expired.")
+
+    issue_id = req.params.get("issue_id") or req.operation
+    if issue_id and issue_id not in session.dismissed_issues:
+        session.dismissed_issues.append(issue_id)
+
+    col = req.params.get("column")
+    if col and col not in session.protected_columns:
+        session.protected_columns.append(col)
 
     return _build_preview_response(session)
 
@@ -111,6 +138,15 @@ def apply_batch_cleaning(req: BatchCleaningRequest):
             continue
         new_df, detail = _execute_operation(session.current_df, op, params)
         session.current_df = new_df
+
+        if op == "convert_types" and params.get("target_type") == "identifier":
+            for col in params.get("columns", []):
+                if col not in session.protected_columns:
+                    session.protected_columns.append(col)
+                iss_id = f"leading_zeros_{col}"
+                if iss_id not in session.dismissed_issues:
+                    session.dismissed_issues.append(iss_id)
+
         log_entry = {
             "step_number": len(session.applied_operations) + 1,
             "timestamp": datetime.now(timezone.utc).isoformat(),

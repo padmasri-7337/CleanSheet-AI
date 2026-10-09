@@ -21,6 +21,10 @@ class SessionDataset:
         self.applied_operations: List[Dict[str, Any]] = []
         # Audit log of changes
         self.audit_log: List[Dict[str, Any]] = []
+        
+        # Protected columns & dismissed issues tracking
+        self.protected_columns: List[str] = []
+        self.dismissed_issues: List[str] = []
 
     def touch(self):
         self.last_accessed = time.time()

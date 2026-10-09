@@ -134,9 +134,25 @@ export const App: React.FC = () => {
     try {
       const res = await api.applyStep(dataset.session_id, issue.suggested_action, issue.suggested_params);
       setDataset(res);
-      showNotification(`Fixed: ${issue.title}`, 'success');
+      showNotification(`Resolved: ${issue.title}`, 'success');
     } catch (err: any) {
       showNotification(err?.response?.data?.detail || 'Quick fix failed', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Dismiss issue
+  const handleDismissIssue = async (issue: DetectedIssue) => {
+    if (!dataset) return;
+    setIsLoading(true);
+    try {
+      const col = issue.affected_columns && issue.affected_columns.length > 0 ? issue.affected_columns[0] : undefined;
+      const res = await api.dismissIssue(dataset.session_id, issue.id, col);
+      setDataset(res);
+      showNotification(`Dismissed notice: ${issue.title}`, 'info');
+    } catch (err: any) {
+      showNotification(err?.response?.data?.detail || 'Failed to dismiss issue', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -329,6 +345,7 @@ export const App: React.FC = () => {
             <IssueListBanner
               issues={dataset.issues}
               onApplyQuickFix={handleApplyQuickFix}
+              onDismissIssue={handleDismissIssue}
               isLoading={isLoading}
             />
 

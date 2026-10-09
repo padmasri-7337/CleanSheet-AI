@@ -82,6 +82,19 @@ export const api = {
     return res.data;
   },
 
+  dismissIssue: async (
+    sessionId: string,
+    issueId: string,
+    column?: string
+  ): Promise<DatasetPreview> => {
+    const res = await client.post<DatasetPreview>('/clean/dismiss_issue', {
+      session_id: sessionId,
+      operation: 'dismiss_issue',
+      params: { issue_id: issueId, column },
+    });
+    return res.data;
+  },
+
   applyBatch: async (
     sessionId: string,
     operations: { operation: string; params: Record<string, any> }[],

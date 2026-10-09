@@ -78,7 +78,13 @@ def _load_dataframe_from_bytes(content: bytes, filename: str) -> pd.DataFrame:
         )
 
 def _build_preview_response(session) -> DatasetPreviewResponse:
-    profile = cleaning_engine.profile_dataframe(session.current_df)
+    protected_cols = getattr(session, "protected_columns", [])
+    dismissed_iss = getattr(session, "dismissed_issues", [])
+    profile = cleaning_engine.profile_dataframe(
+        session.current_df,
+        protected_columns=protected_cols,
+        dismissed_issues=dismissed_iss
+    )
     diff = cleaning_engine.compute_diff_summary(session.raw_df, session.current_df)
     
     return DatasetPreviewResponse(

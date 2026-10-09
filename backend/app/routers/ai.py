@@ -50,6 +50,14 @@ def execute_approved_plan(req: AIPlanExecuteRequest):
             continue
         new_df, detail = _execute_operation(session.current_df, op, params)
         session.current_df = new_df
+
+        if op == "convert_types" and params.get("target_type") == "identifier":
+            for col in params.get("columns", []):
+                if col not in session.protected_columns:
+                    session.protected_columns.append(col)
+                iss_id = f"leading_zeros_{col}"
+                if iss_id not in session.dismissed_issues:
+                    session.dismissed_issues.append(iss_id)
         
         log_entry = {
             "step_number": len(session.applied_operations) + 1,

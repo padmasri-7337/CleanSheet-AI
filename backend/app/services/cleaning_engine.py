@@ -12,8 +12,15 @@ class CleaningEngine:
     # Profiling & Quality Scoring
     # -------------------------------------------------------------
     @staticmethod
-    def profile_dataframe(df: pd.DataFrame) -> Dict[str, Any]:
+    def profile_dataframe(
+        df: pd.DataFrame,
+        protected_columns: Optional[List[str]] = None,
+        dismissed_issues: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
         """Profiles a DataFrame, computes quality metrics, and detects common issues."""
+        protected_set = set(protected_columns or [])
+        dismissed_set = set(dismissed_issues or [])
+
         row_count, col_count = df.shape
         duplicate_rows = int(df.duplicated().sum())
         total_cells = row_count * col_count if col_count > 0 else 0
@@ -28,7 +35,7 @@ class CleaningEngine:
         issues: List[Dict[str, Any]] = []
 
         # Check duplicate rows issue
-        if duplicate_rows > 0:
+        if duplicate_rows > 0 and "duplicate_rows" not in dismissed_set:
             issues.append({
                 "id": "duplicate_rows",
                 "severity": "high",
@@ -51,9 +58,10 @@ class CleaningEngine:
             
             # Detect header issues
             col_str = str(col)
-            if col_str != col_str.strip() or re.search(r'\s{2,}', col_str) or re.search(r'[^a-zA-Z0-9_\s]', col_str):
+            header_issue_id = f"messy_header_{col_str}"
+            if (col_str != col_str.strip() or re.search(r'\s{2,}', col_str) or re.search(r'[^a-zA-Z0-9_\s]', col_str)) and header_issue_id not in dismissed_set:
                 issues.append({
-                    "id": f"messy_header_{col_str}",
+                    "id": header_issue_id,
                     "severity": "low",
                     "category": "headers",
                     "title": f"Messy column header: '{col_str}'",
@@ -64,7 +72,8 @@ class CleaningEngine:
                 })
 
             # Detect missing values in column
-            if missing_count > 0:
+            missing_issue_id = f"missing_values_{col_str}"
+            if missing_count > 0 and missing_issue_id not in dismissed_set:
                 missing_col_pct = (missing_count / row_count * 100) if row_count > 0 else 0
                 severity = "high" if missing_col_pct > 30 else "medium"
                 
@@ -77,7 +86,7 @@ class CleaningEngine:
                     strat = "fill_value"
 
                 issues.append({
-                    "id": f"missing_values_{col_str}",
+                    "id": missing_issue_id,
                     "severity": severity,
                     "category": "missing_values",
                     "title": f"Missing values in '{col_str}': {missing_count} rows ({missing_col_pct:.1f}%)",
@@ -88,13 +97,14 @@ class CleaningEngine:
                 })
 
             # Detect whitespace in string columns
-            if inferred_type == "string" and len(non_null_series) > 0:
+            ws_issue_id = f"whitespace_{col_str}"
+            if inferred_type == "string" and len(non_null_series) > 0 and ws_issue_id not in dismissed_set:
                 has_padded_whitespace = non_null_series.apply(
                     lambda v: isinstance(v, str) and (v != v.strip() or "  " in v)
                 ).any()
                 if has_padded_whitespace:
                     issues.append({
-                        "id": f"whitespace_{col_str}",
+                        "id": ws_issue_id,
                         "severity": "low",
                         "category": "formatting",
                         "title": f"Leading/trailing whitespace in '{col_str}'",
@@ -105,13 +115,14 @@ class CleaningEngine:
                     })
 
             # Detect currency strings formatted as text
-            if inferred_type == "string" and len(non_null_series) > 0:
+            curr_issue_id = f"currency_format_{col_str}"
+            if inferred_type == "string" and len(non_null_series) > 0 and curr_issue_id not in dismissed_set:
                 currency_count = non_null_series.apply(
                     lambda v: bool(re.search(r'[\$€£¥]\s*[\d,]+(\.\d+)?', str(v)))
                 ).sum()
                 if currency_count > 0 and currency_count / len(non_null_series) > 0.5:
                     issues.append({
-                        "id": f"currency_format_{col_str}",
+                        "id": curr_issue_id,
                         "severity": "medium",
                         "category": "types",
                         "title": f"Currency strings in '{col_str}'",
@@ -122,13 +133,14 @@ class CleaningEngine:
                     })
 
             # Detect leading zeros in potential identifiers
-            if inferred_type in ("string", "identifier") and len(non_null_series) > 0:
+            id_issue_id = f"leading_zeros_{col_str}"
+            if col_str not in protected_set and id_issue_id not in dismissed_set and inferred_type in ("string", "identifier") and len(non_null_series) > 0:
                 has_leading_zeros = non_null_series.apply(
                     lambda v: bool(re.match(r'^0\d+$', str(v).strip()))
                 ).any()
                 if has_leading_zeros:
                     issues.append({
-                        "id": f"leading_zeros_{col_str}",
+                        "id": id_issue_id,
                         "severity": "info",
                         "category": "identifiers",
                         "title": f"Leading zeros detected in '{col_str}'",
