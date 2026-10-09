@@ -1,0 +1,57 @@
+================================================================================
+CLEANSHEET AI — DATA QUALITY AUDIT & CLEANING REPORT
+Generated on: 2026-10-09 23:21:10
+Input File:   messy_sales_data_cleaned (1).csv
+Output File:  sales_data_cleaned.csv
+================================================================================
+
+1. DATASET DIMENSIONS
+--------------------------------------------------------------------------------
+Original Dataset: 12 rows, 10 columns
+Cleaned Dataset:  12 rows, 10 columns
+Exact Duplicates: 0 found, 0 dropped (none present)
+Order ID Collisions: 0 found
+
+2. INITIAL DATA-QUALITY ISSUES IDENTIFIED
+--------------------------------------------------------------------------------
+ • Column 'customer_name' has 1 missing/placeholder values.
+ • Column 'product_category' has 1 missing/placeholder values.
+ • Column 'units_sold' has 1 missing/placeholder values.
+ • Column 'discount' has 1 missing/placeholder values.
+ • Column 'notes' has 1 missing/placeholder values.
+
+3. CALCULATION & FINANCIAL INTEGRITY CHECKS
+--------------------------------------------------------------------------------
+Observed Formula Pattern: total_amount = units_sold * unit_price (Gross Subtotal)
+Discount Representation: Percentage rates standardized to decimals (e.g., 10% -> 0.10)
+
+Calculation Anomalies Checked:
+ • ORD-004: Recorded total_amount (142.0) differs from expected gross units*price (5.0 * 18.99 = 94.95).
+
+4. AUTOMATED CLEANING & STANDARDIZATION OPERATIONS PERFORMED
+--------------------------------------------------------------------------------
+ [x] Standardized customer names to Title Case with hyphen and apostrophe preservation.
+ [x] Standardized multi-format dates (slash, hyphen, text month) to ISO YYYY-MM-DD format.
+ [x] Normalized status codes to Title Case (Completed, Pending, Shipped, Delivered, Processing).
+ [x] Converted percentage string discounts to standardized numeric rates (e.g., '10%' -> 0.10).
+ [x] Converted numeric fields (units_sold, unit_price, total_amount) to floating point types.
+ [x] Corrected ORD-004 total_amount from 142.0 to verifiable 94.95 (5 units * $18.99).
+
+5. UNRESOLVED ITEMS REQUIRING MANUAL VERIFICATION (GOVERNANCE PRESERVED)
+--------------------------------------------------------------------------------
+Per strict data governance, missing customer identities, unrecorded product categories,
+and unspecified quantities were NOT fabricated or silently invented:
+ [!] ORD-005: Missing 'units_sold' with unit_price=299.99 and total_amount=0.0. Quantity not derived automatically to avoid unauthorized invention.
+ [!] ORD-007: Discount value is missing / unspecified.
+ [!] ORD-008: Product category is missing / placeholder.
+ [!] ORD-011: Customer name is missing / placeholder.
+
+6. SUMMARY OF OUTPUT FILES GENERATED
+--------------------------------------------------------------------------------
+ 1. Cleaned CSV:          D:\CleanSheet AI\sales_data_cleaned.csv
+ 2. Quality Metrics CSV:  D:\CleanSheet AI\data_quality_summary.csv
+ 3. Audit Report:         D:\CleanSheet AI\data_cleaning_report.txt
+
+================================================================================
+END OF REPORT
+================================================================================

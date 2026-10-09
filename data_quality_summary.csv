@@ -1,0 +1,11 @@
+column_name,data_type_raw,data_type_cleaned,missing_count_before,missing_count_after,status
+order_id,str,str,0,0,Resolved / Validated
+customer_name,str,str,1,1,Contains Unfilled Missing Data (Preserved)
+purchase_date,str,str,0,0,Resolved / Validated
+product_category,str,str,1,1,Contains Unfilled Missing Data (Preserved)
+units_sold,str,float64,1,1,Contains Unfilled Missing Data (Preserved)
+unit_price,str,float64,0,0,Resolved / Validated
+total_amount,str,float64,0,0,Resolved / Validated
+discount,str,float64,1,1,Contains Unfilled Missing Data (Preserved)
+status,str,str,0,0,Resolved / Validated
+notes,str,str,1,1,Contains Unfilled Missing Data (Preserved)
