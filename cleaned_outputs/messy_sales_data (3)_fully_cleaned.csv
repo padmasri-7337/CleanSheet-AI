@@ -1,0 +1,13 @@
+order_id,customer_code,customer_name,purchase_date,product_category,units_sold,unit_price,total_amount,discount,status,notes
+ORD-001,00101,Johnathan Doe,2023-01-15,Electronics,3.0,1200.5,3601.5,0.1,Completed,Standard shipping
+ORD-002,00245,Sarah O'Connor,2023-01-15,Home & Kitchen,1.0,45.0,45.0,0.0,Completed,Gift wrapped
+ORD-003,00312,Michael Chang,2023-01-16,Electronics,2.0,850.0,1700.0,0.05,Completed,Rush order
+ORD-004,00409,Emma Watson,2023-01-16,Books,5.0,18.99,94.95,0.15,Pending,Backorder
+ORD-005,00520,Robert Brown,2023-01-18,Electronics,,299.99,0.0,0.0,Completed,Warranty included
+ORD-006,00631,Alice Wonderland,2023-01-20,Clothing,4.0,35.5,142.0,0.2,Shipped,Expedited
+ORD-007,00714,David Miller,2023-01-22,Home & Kitchen,2.0,120.0,240.0,,Delivered,Customer satisfied
+ORD-008,00889,Lisa Simpson,2023-01-23,,1.0,99.0,99.0,0.0,Shipped,
+ORD-009,00902,Carlos Ramirez,2023-01-25,Electronics,3.0,450.0,1350.0,0.1,Delivered,Invoiced
+ORD-010,00045,Emily Clark,2023-01-28,Books,10.0,12.5,125.0,0.0,Completed,Bulk educational discount
+ORD-011,00188,,2023-01-30,Clothing,2.0,60.0,120.0,0.05,Processing,Missing name
+ORD-012,00299,George Wilson,2023-02-02,Electronics,1.0,1499.0,1499.0,0.0,Completed,VIP customer
