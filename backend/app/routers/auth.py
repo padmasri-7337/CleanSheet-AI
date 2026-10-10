@@ -87,12 +87,17 @@ def login(login_in: UserLogin):
 
     target_user = None
     if db_manager.is_connected and db_manager.users is not None:
-        target_user = db_manager.users.find_one({"$or": [{"email": query_str}, {"username": login_in.username_or_email.strip()}]})
+        target_user = db_manager.users.find_one({
+            "$or": [
+                {"email": query_str},
+                {"username": {"$regex": f"^{query_str}$", "$options": "i"}}
+            ]
+        })
         if target_user:
             target_user["id"] = str(target_user["_id"])
     else:
         for u in db_manager._in_memory_users.values():
-            if u["email"].lower() == query_str or u["username"] == login_in.username_or_email.strip():
+            if u["email"].lower() == query_str or u["username"].lower() == query_str:
                 target_user = u
                 break
 
