@@ -1,4 +1,5 @@
 import logging
+import certifi
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
 from pymongo import MongoClient
@@ -43,7 +44,8 @@ class DatabaseManager:
                 connectTimeoutMS=3000,
                 socketTimeoutMS=3000,
                 retryWrites=True,
-                appName="CleanSheetAI"
+                appName="CleanSheetAI",
+                tlsCAFile=certifi.where()
             )
             # Explicit ping to verify credentials and connectivity
             res = self.client.admin.command('ping')
