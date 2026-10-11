@@ -35,10 +35,10 @@ export const CleaningConsole: React.FC<CleaningConsoleProps> = ({
   ];
 
   return (
-    <div className="bg-slate-900/60 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+    <div className="bg-white border border-slate-200/90 rounded-3xl overflow-hidden shadow-xs">
       
       {/* Navigation Tab Bar */}
-      <div className="border-b border-slate-800 px-4 flex items-center space-x-1 overflow-x-auto">
+      <div className="border-b border-slate-200 bg-slate-50/70 px-4 sm:px-6 flex items-center space-x-1 overflow-x-auto">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -46,21 +46,21 @@ export const CleaningConsole: React.FC<CleaningConsoleProps> = ({
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center space-x-2 py-3.5 px-3.5 text-xs font-semibold border-b-2 transition whitespace-nowrap ${
+              className={`flex items-center space-x-2 py-3.5 px-4 text-xs font-semibold border-b-2 transition whitespace-nowrap ${
                 isActive
-                  ? 'border-emerald-400 text-emerald-400 bg-emerald-500/5'
-                  : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                  ? 'border-[#009A49] text-[#009A49] bg-white font-bold'
+                  : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100/60'
               }`}
             >
               <Icon className="w-4 h-4" />
               <span>{tab.label}</span>
               {tab.badge && (
-                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-400">
+                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-100 text-emerald-700">
                   {tab.badge}
                 </span>
               )}
               {tab.count !== undefined && tab.count > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-slate-800 text-slate-300">
+                <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-slate-200 text-slate-700">
                   {tab.count}
                 </span>
               )}

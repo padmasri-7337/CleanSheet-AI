@@ -44,118 +44,120 @@ export const Navbar: React.FC<NavbarProps> = ({
   const isAiConfigured = health?.ai_engine?.is_configured ?? false;
 
   return (
-    <header className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800">
+    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           
           {/* Logo & Brand */}
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-              <Sparkles className="w-5 h-5 text-slate-950 font-bold" />
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center shadow-sm">
+              <Sparkles className="w-5 h-5 text-white font-bold" />
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <span className="text-xl font-bold tracking-tight text-white">CleanSheet</span>
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                <span className="text-xl font-bold tracking-tight text-slate-900">CleanSheet</span>
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
                   AI
                 </span>
               </div>
-              <p className="text-xs text-slate-400 hidden sm:block">Intelligent Spreadsheet Cleaning</p>
+              <p className="text-[11px] text-slate-500 hidden sm:block">Intelligent Spreadsheet Cleaning</p>
             </div>
           </div>
 
-          {/* System Status Indicators */}
-          <div className="hidden md:flex items-center space-x-3">
+          {/* System Status Indicators (Light Theme) */}
+          <div className="hidden md:flex items-center space-x-2.5">
             {/* MongoDB Badge */}
             <button
+              type="button"
               onClick={onOpenStatusModal}
-              className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+              className={`flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-semibold border transition ${
                 isDbConnected
-                  ? 'bg-emerald-950/40 border-emerald-800 text-emerald-300 hover:bg-emerald-900/40'
-                  : 'bg-amber-950/40 border-amber-800 text-amber-300 hover:bg-amber-900/40'
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800 hover:bg-emerald-100/60'
+                  : 'bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100/60'
               }`}
               title="Click to inspect MongoDB connection details"
             >
               <Database className="w-3.5 h-3.5" />
-              <span>{isDbConnected ? 'MongoDB Atlas' : 'Local DB Fallback'}</span>
-              <span className={`w-2 h-2 rounded-full ${isDbConnected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+              <span>{isDbConnected ? 'MongoDB Atlas' : 'Local In-Memory'}</span>
+              <span className={`w-2 h-2 rounded-full ${isDbConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
             </button>
 
             {/* AI Engine Badge */}
             <button
+              type="button"
               onClick={onOpenStatusModal}
-              className="flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-medium border border-indigo-800 bg-indigo-950/40 text-indigo-300 hover:bg-indigo-900/40 transition-colors"
+              className="flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-semibold border border-indigo-200 bg-indigo-50 text-indigo-800 hover:bg-indigo-100/60 transition"
               title="Click to inspect AI Engine details"
             >
               <Bot className="w-3.5 h-3.5" />
-              <span>{isAiConfigured ? 'Gemini 2.5 Flash' : 'Heuristic Engine'}</span>
-              <span className="w-2 h-2 rounded-full bg-indigo-400" />
+              <span>{isAiConfigured ? 'Google Gemini' : 'Heuristic Engine'}</span>
+              <span className="w-2 h-2 rounded-full bg-indigo-500" />
             </button>
 
             {/* Privacy Badge */}
-            <div className="flex items-center space-x-1 px-2.5 py-1 rounded-md text-[11px] font-medium bg-slate-800/80 text-slate-300 border border-slate-700">
-              <ShieldCheck className="w-3.5 h-3.5 text-teal-400" />
-              <span>Zero Long-Term Storage</span>
+            <div className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
+              <ShieldCheck className="w-3.5 h-3.5 text-teal-600" />
+              <span>Zero Raw Storage</span>
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center space-x-2.5">
-            {hasActiveSession && (
+          {/* Action Buttons & User Menu */}
+          <div className="flex items-center space-x-2">
+            
+            {hasActiveSession && sessionId && (
               <>
+                {/* Audit Report Button */}
                 <button
+                  type="button"
+                  onClick={onOpenReport}
+                  className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 transition shadow-xs"
+                >
+                  <FileText className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Report</span>
+                </button>
+
+                {/* Reset Button */}
+                <button
+                  type="button"
                   onClick={onReset}
-                  className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 transition"
-                  title="Reset dataset back to original raw uploaded state"
+                  className="hidden sm:flex items-center space-x-1 px-2.5 py-1.5 rounded-xl text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition"
+                  title="Revert all changes to original dataset"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                   <span>Reset</span>
                 </button>
 
-                <button
-                  onClick={onOpenReport}
-                  className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-emerald-300 bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-800 transition"
-                >
-                  <FileText className="w-3.5 h-3.5" />
-                  <span>Audit Report</span>
-                </button>
-
-                {/* Export Dropdown */}
+                {/* Download Menu */}
                 <div className="relative">
                   <button
+                    type="button"
                     onClick={() => setDownloadOpen(!downloadOpen)}
-                    className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-md shadow-emerald-500/20 transition"
+                    className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-[#009A49] hover:bg-[#00823E] text-white shadow-xs transition"
                   >
                     <Download className="w-3.5 h-3.5" />
                     <span>Download</span>
                     <ChevronDown className="w-3 h-3 ml-0.5" />
                   </button>
 
-                  {downloadOpen && sessionId && (
-                    <div className="absolute right-0 mt-2 w-48 rounded-xl bg-slate-900 border border-slate-800 shadow-xl py-1 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                  {downloadOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-2xl shadow-xl py-1 z-50 animate-in fade-in">
                       <a
                         href={api.getDownloadUrl(sessionId, 'csv')}
                         download
                         onClick={() => setDownloadOpen(false)}
-                        className="flex items-center space-x-2.5 px-4 py-2.5 text-xs text-slate-200 hover:bg-slate-800 hover:text-white transition"
+                        className="flex items-center space-x-2 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
                       >
-                        <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-                        <div>
-                          <div className="font-semibold">Cleaned CSV (.csv)</div>
-                          <div className="text-[10px] text-slate-400">Comma-delimited text</div>
-                        </div>
+                        <FileText className="w-4 h-4 text-emerald-600" />
+                        <span>Cleaned CSV (.csv)</span>
                       </a>
                       <a
                         href={api.getDownloadUrl(sessionId, 'xlsx')}
                         download
                         onClick={() => setDownloadOpen(false)}
-                        className="flex items-center space-x-2.5 px-4 py-2.5 text-xs text-slate-200 hover:bg-slate-800 hover:text-white transition border-t border-slate-800"
+                        className="flex items-center space-x-2 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 border-t border-slate-100"
                       >
-                        <FileSpreadsheet className="w-4 h-4 text-teal-400" />
-                        <div>
-                          <div className="font-semibold">Cleaned Excel (.xlsx)</div>
-                          <div className="text-[10px] text-slate-400">Auto-formatted widths</div>
-                        </div>
+                        <FileSpreadsheet className="w-4 h-4 text-teal-600" />
+                        <span>Cleaned Excel (.xlsx)</span>
                       </a>
                     </div>
                   )}
@@ -163,15 +165,17 @@ export const Navbar: React.FC<NavbarProps> = ({
               </>
             )}
 
-            {/* Auth Pill */}
+            {/* Auth Button */}
             {currentUser ? (
-              <div className="flex items-center space-x-2 pl-2 border-l border-slate-800">
-                <span className="text-xs font-medium text-slate-300 hidden sm:inline">
-                  {currentUser.username}
-                </span>
+              <div className="flex items-center space-x-2 pl-2 border-l border-slate-200">
+                <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-800">
+                  <UserIcon className="w-3.5 h-3.5 text-emerald-600" />
+                  <span className="max-w-[100px] truncate">{currentUser.username}</span>
+                </div>
                 <button
+                  type="button"
                   onClick={onLogout}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
                   title="Sign out"
                 >
                   <LogOut className="w-4 h-4" />
@@ -179,11 +183,12 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             ) : (
               <button
+                type="button"
                 onClick={onOpenAuthModal}
-                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700 border border-slate-700/80 transition"
+                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 transition shadow-xs"
               >
-                <UserIcon className="w-3.5 h-3.5 text-slate-400" />
-                <span>Sign In</span>
+                <UserIcon className="w-3.5 h-3.5 text-slate-500" />
+                <span>Sign In / Register</span>
               </button>
             )}
 

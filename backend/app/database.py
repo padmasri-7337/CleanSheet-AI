@@ -134,6 +134,7 @@ class DatabaseManager:
         record["created_at"] = record.get("created_at") or datetime.now(timezone.utc).isoformat()
         if self.is_connected and self.cleaning_history is not None:
             res = self.cleaning_history.insert_one(record)
+            record["_id"] = str(res.inserted_id)
             return str(res.inserted_id)
         else:
             record_id = f"mem_hist_{len(self._in_memory_history) + 1}_{int(datetime.now(timezone.utc).timestamp())}"
@@ -159,6 +160,7 @@ class DatabaseManager:
         recipe["updated_at"] = datetime.now(timezone.utc).isoformat()
         if self.is_connected and self.cleaning_recipes is not None:
             res = self.cleaning_recipes.insert_one(recipe)
+            recipe["_id"] = str(res.inserted_id)
             return str(res.inserted_id)
         else:
             recipe_id = f"mem_rec_{len(self._in_memory_recipes) + 1}_{int(datetime.now(timezone.utc).timestamp())}"

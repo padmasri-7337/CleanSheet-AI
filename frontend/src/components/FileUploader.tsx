@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { UploadCloud, FileSpreadsheet, Sparkles, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { UploadCloud, FileSpreadsheet, Sparkles, AlertCircle } from 'lucide-react';
 
 interface FileUploaderProps {
   onUpload: (file: File) => Promise<void>;
@@ -75,10 +75,10 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={() => !isLoading && fileInputRef.current?.click()}
-        className={`relative border-2 border-dashed rounded-2xl p-8 transition-all cursor-pointer text-center ${
+        className={`relative border-2 border-dashed rounded-3xl p-10 transition-all cursor-pointer text-center ${
           isDragging
-            ? 'border-emerald-400 bg-emerald-950/20 scale-[1.01]'
-            : 'border-slate-800 hover:border-slate-700 bg-slate-900/50 hover:bg-slate-900/80'
+            ? 'border-emerald-500 bg-emerald-50/50 scale-[1.01]'
+            : 'border-slate-300 hover:border-emerald-500 bg-white hover:bg-slate-50/70 shadow-sm'
         }`}
       >
         <input
@@ -90,44 +90,44 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
           disabled={isLoading}
         />
 
-        <div className="flex flex-col items-center justify-center space-y-3">
-          <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+        <div className="flex flex-col items-center justify-center space-y-3.5">
+          <div className="w-16 h-16 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shadow-xs">
             {isLoading ? (
-              <div className="w-6 h-6 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+              <div className="w-7 h-7 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin" />
             ) : (
-              <UploadCloud className="w-7 h-7" />
+              <UploadCloud className="w-8 h-8" />
             )}
           </div>
 
           <div>
-            <h3 className="text-base font-semibold text-white">
-              {isLoading ? 'Analyzing & Profiling Dataset...' : 'Upload your messy spreadsheet'}
+            <h3 className="text-lg font-bold text-slate-900">
+              {isLoading ? 'Analyzing & Profiling Dataset...' : 'Upload your spreadsheet'}
             </h3>
-            <p className="text-xs text-slate-400 mt-1 max-w-sm">
+            <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-md mx-auto">
               Drag & drop CSV, TSV, or Excel (.xlsx) files up to 25MB. Files are processed securely in temporary volatile memory.
             </p>
           </div>
 
-          <div className="flex items-center space-x-4 text-[11px] text-slate-500 pt-1">
-            <span>• Automatic Type Inference</span>
-            <span>• Duplicate & Null Detection</span>
-            <span>• Leading Zero Protection</span>
+          <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-slate-500 pt-2 font-medium">
+            <span className="px-2.5 py-1 rounded-full bg-slate-100">Automatic Type Inference</span>
+            <span className="px-2.5 py-1 rounded-full bg-slate-100">Duplicate & Null Detection</span>
+            <span className="px-2.5 py-1 rounded-full bg-slate-100">Leading Zero Protection</span>
           </div>
         </div>
       </div>
 
       {error && (
-        <div className="mt-3 p-3 rounded-xl bg-rose-950/40 border border-rose-800 text-rose-300 text-xs flex items-center space-x-2">
+        <div className="mt-3 p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center space-x-2">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
       {/* One-click Sample Loaders */}
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-xl bg-slate-900/40 border border-slate-800/80">
-        <div className="flex items-center space-x-2 text-xs text-slate-400">
-          <Sparkles className="w-4 h-4 text-emerald-400" />
-          <span>Don't have a dataset? Try realistic test files:</span>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
+        <div className="flex items-center space-x-2 text-xs font-semibold text-slate-600">
+          <Sparkles className="w-4 h-4 text-emerald-600" />
+          <span>Don't have a dataset ready? Try realistic test files:</span>
         </div>
 
         <div className="flex items-center space-x-2">
@@ -135,9 +135,9 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
             type="button"
             disabled={isLoading}
             onClick={() => onLoadSample('messy_sales')}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 hover:border-slate-600 transition"
+            className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-xs transition"
           >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
             <span>Messy Sales (CSV)</span>
           </button>
 
@@ -145,9 +145,9 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
             type="button"
             disabled={isLoading}
             onClick={() => onLoadSample('messy_customers')}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 hover:border-slate-600 transition"
+            className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-xs transition"
           >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-teal-400" />
+            <FileSpreadsheet className="w-3.5 h-3.5 text-teal-600" />
             <span>Messy Customers (Excel)</span>
           </button>
         </div>
